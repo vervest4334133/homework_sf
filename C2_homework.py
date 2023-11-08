@@ -53,9 +53,9 @@ class WarShip:
                 cur_x += i
 
             elif self.o == 1:
-                cur_y += 1
+                cur_y += i
 
-        ship_dots.append(Coord(cur_x, cur_y))
+            ship_dots.append(Coord(cur_x, cur_y))
 
         return ship_dots
 
@@ -90,7 +90,7 @@ class Battleground:
     # запрет на установку кораблей рядом
     def ship_perimeter(self, ship, verb = False):
         near = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 0), (0, 1), (1, -1), (1, 0), (1, 1)]
-        for d in ship_dots:          #ship_dots - точки, в которых расположен корабль
+        for d in ship.dots:           #ship_dots - точки, в которых расположен корабль   **************
             for dx, dy in near:
                 cur = Coord(d.x + dx, d.y + dy)
                 if not (self.out(cur)) and cur not in self.busy:
@@ -107,6 +107,8 @@ class Battleground:
             self.field[d.x][d.y] = "■"         #замена пустой точки в self.field из init на квадрат(часть корабля)
             self.busy.append(d)                #добавить в список занятых точек точку с частью корабля
 
+        self.warships.append(ship)
+        self.ship_perimeter(ship)
 
     def shot(self, d):
         if self.out(d):
@@ -137,15 +139,6 @@ class Battleground:
         self.busy = []
 
 
-# abc = Battleground()
-# abc.add_ship()
-
-
-# class Hit:
-#     def __init__(self):
-#
-
-
 #базовый класс игрока
 class Player:
     def __init__(self, board, enemy):
@@ -161,6 +154,23 @@ class Player:
                 target = self.ask()
                 repeat = self.enemy.shot(target)
                 return repeat
+            except BoardException as e:
+                print(e)
+
+
+class YourEnemy(Player):
+    def ask(self):
+        d = Coord(randint(0, 5), randint(0, 5))
+        print(f"Enemy`s step: {d.x + 1} {d.y + 1}")
+        return d
+
+    def step(self):
+        while True:
+            try:
+                target = self.ask()
+                repeat = self.enemy.shot(target)
+                return repeat
+
             except BoardException as e:
                 print(e)
 
@@ -183,16 +193,25 @@ class Human(Player):
 
             return Coord(x-1, y-1)
 
-class YourEnemy(Player):
-    def ask(self):
-        d = Coord(randint(0, 5), randint(0, 5))
-        print(f"Enemy`s step: {d.x + 1} {d.y + 1}")
-        return d
 
-    #сделать добитие кораблей
 
 
 class Game:
+    def __init__(self, size = 6):
+        self.size = size
+        pl = self.make_board()
+        co = self.make_board()
+        co.hid = True
+
+        self.computer = YourEnemy(co, pl)
+        self.admin = Human(pl, co)
+
+    def make_board(self):
+        board = None
+        while board is None:                              #цикл для гарантированного создания доски
+            board = self.try_board()
+        return board
+
     def try_board(self):
         lens = [3, 2, 2, 1, 1, 1, 1]
         board = Battleground(size = self.size)
@@ -200,7 +219,7 @@ class Game:
         for lenght in lens:
             while True:
                 attempts += 1
-                if attempts > 36:
+                if attempts > 2000:
                     return None
                 ship = WarShip(Coord(randint(0, self.size), randint(0, self.size)), lenght, randint(0,1))
                 try:
@@ -210,21 +229,6 @@ class Game:
                     pass
         board.beginning()
         return board
-
-    def make_board(self):
-        board = None
-        while board is None:
-            board = self.try_board()
-        return board
-
-    def __init__(self, size = 6):
-        self.size = size
-        pl = self.make_board()
-        co = self.make_board()
-        co.hid = True
-
-        self.computer = YourEnemy(co, pl)
-        self.admin = Human(pl, co)
 
     def intro(self):
         print("Морской бой. Формат ввода: x y:")
@@ -249,21 +253,23 @@ class Game:
                 print("Time of Your Enemy.")
                 repeat = self.computer.step()
 
+
             if repeat:
                 num -= 1
 
             if self.computer.board.count == 7:
-                print("Your Enemy Wins!")
+                print("You Win!")
                 break
 
             if self.admin.board.count == 7:
-                print("You Win!")
+                print("Your Enemy Wins!")
                 break
             num += 1
 
     def start(self):
         self.intro()
         self.game_logic()
+
 
 g = Game()
 g.start()
